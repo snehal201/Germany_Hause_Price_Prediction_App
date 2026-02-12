@@ -7,7 +7,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 import joblib
-import json  # Added to save the score
+import json
 import os
 
 # Ensure model directory exists
@@ -18,6 +18,7 @@ if not os.path.exists('model'):
 def train():
     print("1. Loading data...")
     try:
+        # Using the specified encoding from your existing logic
         df = pd.read_csv("data/immo_data.csv", encoding='latin1')
     except FileNotFoundError:
         print("Error: 'data/immo_data.csv' not found.")
@@ -41,7 +42,6 @@ def train():
     df = df[df['totalRent'] > df['baseRent']]
     df = df.dropna(subset=['totalRent', 'livingSpace', 'noRooms', 'yearConstructed'])
 
-    # Fix Boolean columns for Scikit-Learn
     bool_cols = ['balcony', 'newlyConst']
     for col in bool_cols:
         if col in df.columns:
@@ -75,9 +75,16 @@ def train():
             ('bool', boolean_transformer, boolean_features)
         ])
 
+    # OPTIMIZATION: Added max_depth and min_samples_leaf to reduce node count
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('regressor', RandomForestRegressor(n_estimators=50, random_state=42, n_jobs=-1))
+        ('regressor', RandomForestRegressor(
+            n_estimators=50,
+            max_depth=12,          # Limits tree depth to reduce file size
+            min_samples_leaf=5,    # Prevents creating tiny branches
+            random_state=42,
+            n_jobs=-1
+        ))
     ])
 
     # --- Train and Save ---
@@ -88,16 +95,15 @@ def train():
     score = model.score(X_test, y_test)
     print(f"   Model R^2 Score: {score:.2f}")
 
-    # SAVE MODEL
-    joblib.dump(model, 'model/housing_model.pkl')
+    # OPTIMIZATION: Used compress=3 to significantly reduce .pkl file size
+    joblib.dump(model, 'model/housing_model.pkl', compress=3)
 
-    # SAVE ACCURACY SCORE (New Feature)
+    # SAVE ACCURACY SCORE
     with open('model/metrics.json', 'w') as f:
         json.dump({"r2_score": score}, f)
 
-    print("5. Success! Model and metrics saved.")
+    print("5. Success! Optimized model and metrics saved.")
 
 
 if __name__ == "__main__":
     train()
-    

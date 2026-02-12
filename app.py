@@ -77,7 +77,7 @@ with st.form("prediction_form"):
         is_newly_built = st.checkbox("Newly Constructed", value=False)
 
     st.markdown("---")
-    st.subheader("Compare with Actual Value (Optional)")
+    st.subheader("🧠Can you guess closer than our model?")
     # New Input: Actual Rent for comparison
     actual_rent_input = st.number_input("Known/Actual Rent (€)", min_value=0.0, value=0.0, step=10.0,
                                         help="Enter the actual rent if known to compare with the prediction.")
