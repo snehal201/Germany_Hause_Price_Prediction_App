@@ -15,19 +15,7 @@ Market Analysis Utilities: Includes functions to calculate ROI, rent increases p
 
 Automated Training Pipeline: Script to clean data, train the model, and save performance metrics.
 
-## 📂 Project Structure
-Plaintext
-**Germany_Hause_Price_Prediction_App**/
-├── data/
-│   └── immo_data.csv          # Dataset (input for training)
-├── model/
-│   ├── housing_model.pkl      # Trained Random Forest model (generated)
-│   └── metrics.json           # Model performance scores (generated)
-├── app.py                     # Main Streamlit application
-├── train_model.py             # Script to train and save the model
-├── functions.py               # Data analysis helper functions (ROI, trends)
-├── requirements.txt           # Python dependencies
-└── README.md                  # Project documentation
+
 ## 🛠️ Tech Stack
 Frontend: Streamlit
 
