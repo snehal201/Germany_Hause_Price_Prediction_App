@@ -18,7 +18,7 @@ if not os.path.exists('model'):
 def train():
     print("1. Loading data...")
     try:
-        # Using the specified encoding from your existing logic
+        # Load dataset with original encoding
         df = pd.read_csv("data/immo_data.csv", encoding='latin1')
     except FileNotFoundError:
         print("Error: 'data/immo_data.csv' not found.")
@@ -42,6 +42,7 @@ def train():
     df = df[df['totalRent'] > df['baseRent']]
     df = df.dropna(subset=['totalRent', 'livingSpace', 'noRooms', 'yearConstructed'])
 
+    # Standardize boolean columns for scikit-learn
     bool_cols = ['balcony', 'newlyConst']
     for col in bool_cols:
         if col in df.columns:
@@ -75,13 +76,13 @@ def train():
             ('bool', boolean_transformer, boolean_features)
         ])
 
-    # OPTIMIZATION: Added max_depth and min_samples_leaf to reduce node count
+    # OPTIMIZATION: Pruning parameters added to reduce model size below 40MB
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(
             n_estimators=50,
-            max_depth=12,          # Limits tree depth to reduce file size
-            min_samples_leaf=5,    # Prevents creating tiny branches
+            max_depth=12,          # Critical for reducing node count and file size
+            min_samples_leaf=5,    # Prevents over-complex tree structures
             random_state=42,
             n_jobs=-1
         ))
@@ -95,7 +96,8 @@ def train():
     score = model.score(X_test, y_test)
     print(f"   Model R^2 Score: {score:.2f}")
 
-    # OPTIMIZATION: Used compress=3 to significantly reduce .pkl file size
+    # OPTIMIZATION: Use compress=3 to shrink the .pkl file
+    # This is essential for meeting Streamlit deployment size limits
     joblib.dump(model, 'model/housing_model.pkl', compress=3)
 
     # SAVE ACCURACY SCORE
