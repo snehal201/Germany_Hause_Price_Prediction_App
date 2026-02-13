@@ -22,7 +22,7 @@ st.markdown("""
 
     /* Style the metric cards */
     [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
+        font-size: 1.3rem;
     }
     </style>
     """, unsafe_allow_html=True)
