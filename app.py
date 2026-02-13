@@ -12,7 +12,7 @@ st.markdown("""
     <style>
     /* Remove top padding of the main container */
     .block-container {
-        padding-top: 1rem;
+        padding-top: 0rem;
         padding-bottom: 0rem;
     }
     /* Hide the Streamlit header and footer */
@@ -22,7 +22,7 @@ st.markdown("""
 
     /* Style the metric cards */
     [data-testid="stMetricValue"] {
-        font-size: 1.3rem;
+        font-size: 1.0rem;
     }
     </style>
     """, unsafe_allow_html=True)
