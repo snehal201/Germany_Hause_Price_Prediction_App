@@ -1,0 +1,11 @@
+# Original Streamlit dependencies — kept so `streamlit run app.py` still
+# works locally and train_model.py can be re-run.
+#   pip install -r requirements-streamlit.txt
+pandas
+numpy
+scikit-learn
+streamlit>=1.31.0
+joblib
+matplotlib
+seaborn
+altair<5

@@ -1,8 +1,12 @@
-pandas
-numpy
-scikit-learn
-streamlit>=1.31.0
-joblib
-matplotlib
-seaborn
-altair<5
+# Runtime dependencies for the Vercel Python function ONLY.
+# Deliberately slim — streamlit/matplotlib/seaborn are NOT needed to serve
+# predictions and would push the bundle past Vercel's 500 MB Python limit.
+#
+# IMPORTANT: scikit-learn must match the version that created
+# model/housing_model.pkl. Check yours locally with:
+#     python -c "import sklearn; print(sklearn.__version__)"
+# then pin it below. A mismatch usually still unpickles but can warn or fail.
+scikit-learn==1.5.2
+pandas==2.2.3
+numpy==2.0.2
+joblib==1.4.2

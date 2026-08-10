@@ -1,0 +1,18 @@
+# The 61 MB training CSV is never needed at runtime — keep it out of the
+# deployment bundle so builds stay fast and well under the size limit.
+data/
+*.csv
+
+# Local tooling
+.idea/
+.devcontainer/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Training script (runs locally, not on Vercel)
+train_model.py
+functions.py
+app.py
+requirements-streamlit.txt

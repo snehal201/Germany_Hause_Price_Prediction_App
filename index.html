@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>German Rent Predictor</title>
+<meta name="description" content="Predict monthly rent for German properties using a Random Forest model trained on ImmoScout24 listings.">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel-2:#1c2129; --line:#2a3038;
+    --text:#e6edf3; --muted:#8b949e; --accent:#4f9cf9; --good:#22c55e;
+    --warn:#f59e0b; --bad:#ef4444; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    padding:36px 24px 64px;
+  }
+  .shell{max-width:1080px; margin:0 auto}
+
+  header{margin-bottom:26px}
+  header h1{margin:0 0 6px; font-size:28px; letter-spacing:-.4px}
+  header p{margin:0; color:var(--muted); font-size:14.5px; max-width:680px}
+  .badges{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+  .badge{font-size:11.5px; padding:4px 10px; border-radius:999px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted)}
+  .badge b{color:var(--text); font-weight:600}
+
+  .cols{display:grid; grid-template-columns:1.15fr 1fr; gap:22px; align-items:start}
+  .card{background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:22px}
+  .card h2{margin:0 0 18px; font-size:15px; letter-spacing:.2px}
+
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .field{margin-bottom:15px}
+  label{display:block; font-size:12px; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px}
+  input[type=number], select{
+    width:100%; padding:10px 12px; font-size:14px; color:var(--text);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px;
+    font-family:inherit;
+  }
+  input[type=number]:focus, select:focus{outline:none; border-color:var(--accent)}
+  .checks{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px}
+  .check{display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer;
+    padding:9px 13px; border-radius:9px; background:var(--panel-2);
+    border:1px solid var(--line); flex:1; min-width:120px}
+  .check:hover{border-color:#3d4650}
+  .check input{accent-color:var(--accent); width:15px; height:15px; cursor:pointer}
+
+  .divider{height:1px; background:var(--line); margin:20px 0}
+  .guess-note{font-size:13px; color:var(--muted); margin:0 0 12px}
+
+  button.primary{
+    width:100%; padding:13px; margin-top:6px; font-size:15px; font-weight:600;
+    color:#08111f; background:var(--accent); border:none; border-radius:10px;
+    cursor:pointer; font-family:inherit;
+  }
+  button.primary:hover{filter:brightness(1.08)}
+  button.primary:disabled{opacity:.55; cursor:progress}
+
+  /* result panel */
+  .placeholder{color:var(--muted); font-size:14px; padding:26px 0; text-align:center}
+  .result-value{font-size:40px; font-weight:700; color:var(--good);
+    letter-spacing:-1px; font-variant-numeric:tabular-nums; margin:2px 0 2px}
+  .result-label{font-size:12px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.6px}
+  .metrics{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:20px}
+  .metric{background:var(--panel-2); border:1px solid var(--line);
+    border-radius:10px; padding:12px 13px}
+  .metric .k{font-size:11px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.5px; margin-bottom:4px}
+  .metric .v{font-size:18px; font-weight:700; font-variant-numeric:tabular-nums}
+  .verdict{margin-top:16px; padding:12px 14px; border-radius:10px; font-size:13.5px}
+  .verdict.close{background:#0f2a1a; border:1px solid #1f5133; color:#86efac}
+  .verdict.off{background:#2a2110; border:1px solid #5a441a; color:#fcd34d}
+  .err{background:#2d1517; border:1px solid #6b2226; color:#ffb4b4;
+    padding:14px 16px; border-radius:10px; font-size:13.5px; margin-top:14px}
+  .foot-note{margin-top:18px; font-size:12px; color:var(--muted)}
+
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:12.5px}
+
+  @media (max-width:860px){
+    body{padding:24px 16px 50px}
+    .cols{grid-template-columns:1fr}
+    .row{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <h1>German Rent Predictor</h1>
+    <p>Estimates total monthly rent for a German property from a Random Forest
+       regressor trained on ImmoScout24 listings. Enter the property details,
+       optionally guess the rent yourself, and see how close you get.</p>
+    <div class="badges">
+      <span class="badge">Model <b>RandomForestRegressor</b></span>
+      <span class="badge">Trees <b>50</b> · Max depth <b>12</b></span>
+      <span class="badge" id="r2Badge">R² <b>—</b></span>
+      <span class="badge" id="statusBadge">Warming up…</span>
+    </div>
+  </header>
+
+  <div class="cols">
+
+    <!-- ------------------------- inputs ------------------------- -->
+    <section class="card">
+      <h2>Property details</h2>
+
+      <div class="row">
+        <div class="field">
+          <label for="livingSpace">Living space (m²)</label>
+          <input type="number" id="livingSpace" min="10" max="500" step="0.5" value="60">
+        </div>
+        <div class="field">
+          <label for="noRooms">Rooms</label>
+          <input type="number" id="noRooms" min="1" max="10" step="1" value="3">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="yearConstructed">Year built</label>
+          <input type="number" id="yearConstructed" min="1900" max="2026" step="1" value="2015">
+        </div>
+        <div class="field">
+          <label for="state">State</label>
+          <select id="state"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="heatingType">Heating type</label>
+        <select id="heatingType"></select>
+      </div>
+
+      <div class="field">
+        <label>Features</label>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="balcony" checked> Balcony</label>
+          <label class="check"><input type="checkbox" id="newlyConst"> Newly built</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Can you guess closer than the model?</h2>
+      <p class="guess-note">Optional — enter your own estimate to compare. Leave at 0 to skip.</p>
+      <div class="field">
+        <label for="guess">Your prediction (€)</label>
+        <input type="number" id="guess" min="0" step="10" value="0">
+      </div>
+
+      <button class="primary" id="predictBtn">Predict rent</button>
+    </section>
+
+    <!-- ------------------------- result ------------------------- -->
+    <section class="card">
+      <h2>Estimate</h2>
+      <div id="output">
+        <div class="placeholder">
+          Enter details and click <strong>Predict rent</strong> to see the estimate.<br>
+          <span style="font-size:12.5px">Based on historical ImmoScout24 data.</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    Model and data by Snehalkumar Tandel. Predictions are statistical estimates from
+    historical listings, not rental valuations or financial advice.
+  </footer>
+</div>
+
+<script>
+const STATES = ["Nordrhein_Westfalen","Sachsen","Bremen","Bayern","Berlin","Hessen",
+  "Hamburg","Baden_Wuerttemberg","Thueringen","Sachsen_Anhalt","Other"];
+const HEATING = ["central_heating","floor_heating","district_heating",
+  "gas_heating","oil_heating","self_contained_central_heating"];
+
+const pretty = s => s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+const eur = n => "€" + n.toLocaleString("en-US", {maximumFractionDigits:0});
+const $ = id => document.getElementById(id);
+
+function fillSelect(el, values, selected){
+  el.innerHTML = values.map(v =>
+    `<option value="${v}"${v === selected ? " selected" : ""}>${pretty(v)}</option>`).join("");
+}
+fillSelect($("state"), STATES, "Berlin");
+fillSelect($("heatingType"), HEATING, "central_heating");
+
+/* Warm the container and read R² so the first real click isn't a cold start. */
+fetch("/api/predict").then(r => r.json()).then(d => {
+  $("statusBadge").innerHTML = d.modelLoaded
+    ? 'Model <b style="color:#22c55e">ready</b>'
+    : 'Model <b style="color:#ef4444">failed to load</b>';
+  if(d.r2) $("r2Badge").innerHTML = "R² <b>" + Number(d.r2).toFixed(2) + "</b>";
+  if(Array.isArray(d.states) && d.states.length) fillSelect($("state"), d.states, "Berlin");
+  if(Array.isArray(d.heatingTypes) && d.heatingTypes.length)
+    fillSelect($("heatingType"), d.heatingTypes, "central_heating");
+}).catch(() => {
+  $("statusBadge").innerHTML = 'Model <b style="color:#f59e0b">unknown</b>';
+});
+
+$("predictBtn").addEventListener("click", async () => {
+  const btn = $("predictBtn");
+  const out = $("output");
+  btn.disabled = true;
+  btn.textContent = "Predicting…";
+  out.innerHTML = '<div class="placeholder">Running the model…</div>';
+
+  const payload = {
+    livingSpace:     parseFloat($("livingSpace").value),
+    noRooms:         parseInt($("noRooms").value, 10),
+    yearConstructed: parseInt($("yearConstructed").value, 10),
+    state:           $("state").value,
+    heatingType:     $("heatingType").value,
+    balcony:         $("balcony").checked,
+    newlyConst:      $("newlyConst").checked
+  };
+
+  try{
+    const res  = await fetch("/api/predict", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || data.error || "Request failed");
+    show(data);
+  }catch(err){
+    out.innerHTML = '<div class="err"><strong>Prediction failed.</strong><br>'
+      + String(err.message || err) + '</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Predict rent";
+  }
+});
+
+function show(data){
+  const p = data.prediction;
+  const guess = parseFloat($("guess").value) || 0;
+  let html = `
+    <div class="result-label">Estimated total rent per month</div>
+    <div class="result-value">${eur(p)}</div>
+    <div class="result-label">${$("livingSpace").value} m² · ${$("noRooms").value} rooms · ${pretty($("state").value)}</div>`;
+
+  if(guess > 0){
+    const diff = p - guess;
+    const pct  = Math.abs(diff) / guess * 100;
+    html += `
+      <div class="metrics">
+        <div class="metric"><div class="k">Model</div><div class="v">${eur(p)}</div></div>
+        <div class="metric"><div class="k">Your guess</div><div class="v">${eur(guess)}</div></div>
+        <div class="metric"><div class="k">Difference</div>
+          <div class="v" style="color:${Math.abs(diff) < 50 ? "var(--good)" : "var(--warn)"}">
+            ${diff >= 0 ? "+" : "−"}${eur(Math.abs(diff))}</div></div>
+      </div>`;
+    html += Math.abs(diff) < 50
+      ? `<div class="verdict close">Very close — you were within ${eur(Math.abs(diff))} (${pct.toFixed(1)}%) of the model.</div>`
+      : `<div class="verdict off">Your guess was ${diff > 0 ? "lower" : "higher"} than the model by ${eur(Math.abs(diff))} (${pct.toFixed(1)}%).</div>`;
+  }
+
+  html += `<div class="foot-note">Trained on historical ImmoScout24 listings.
+           Predicts <em>totalRent</em> (base rent plus service charges).</div>`;
+  $("output").innerHTML = html;
+}
+</script>
+</body>
+</html>
